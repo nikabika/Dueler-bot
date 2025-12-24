@@ -11,7 +11,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Токен бота (замени на свой)
-TOKEN: Final = "YOUR_BOT_TOKEN_HERE"
+TOKEN: Final = "8357197397:AAEiXz5uYjlnzIP6a1e79bLVh6mWrpecszI"
 
 # Функция приветствия для новых пользователей
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
