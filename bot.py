@@ -1,82 +1,108 @@
 import os
+import telebot
+from telebot import types
 import logging
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-from flask import Flask, request
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = os.environ.get("TOKEN")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
-PORT = int(os.environ.get("PORT", 8080))
+class StarWarsBot:
+    def __init__(self, token):
+        self.bot = telebot.TeleBot(token)
+        self.setup_handlers()
+        
+    def get_or_create_user(self, telegram_id, first_name=None, username=None):
+        return {
+            "telegram_id": str(telegram_id),
+            "first_name": first_name or "путешественник",
+            "username": username,
+        }, True
 
-if not TOKEN:
-    logger.error("TOKEN environment variable is not set")
-    raise ValueError("TOKEN environment variable is required")
+    def setup_handlers(self):
+        @self.bot.message_handler(commands=['start'])
+        def handle_start(message):
+            try:
+                user, is_new = self.get_or_create_user(
+                    message.from_user.id,
+                    message.from_user.first_name,
+                    message.from_user.username
+                )
+                
+                name = user['first_name']
+                
+                welcome_text = f"""*🔥 Йоу, {name}!*
+⚡ Вижу ты тут впервые. Что ж, это - игровой бот в телеграм для дуэлей между игроками, прямо здесь, в чате, оформленный в стиле Звездных Войн! Крутяк, да? В любом случае, давай уже начнем! 
 
-app = Flask(__name__)
-application = Application.builder().token(TOKEN).build()
+_✨ А  если интересно, вот другие наши проекты:_
+ - [ЧИБИКИ | Собирай коллекционных ребяток по вселенной далекой-далекой](https://t.me/chibeki_bot)
+ - [Проекты | Наш тгк с новостями о ботах](https://t.me/tz_projects)
 
-async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_name = update.effective_user.first_name
+_Напиши /search чтобы найти соперника и /menu чтобы вызвать меню_"""
+                
+                markup = types.InlineKeyboardMarkup(row_width=2)
+                btn_search = types.InlineKeyboardButton("🔍 Поиск", callback_data="search")
+                btn_menu = types.InlineKeyboardButton("📋 Меню", callback_data="menu")
+                markup.add(btn_search, btn_menu)
+                
+                self.bot.send_message(
+                    message.chat.id,
+                    welcome_text,
+                    parse_mode='Markdown',
+                    reply_markup=markup,
+                    disable_web_page_preview=True
+                )
+                
+            except Exception as e:
+                logger.error(f"Ошибка в start: {e}")
+                self.bot.send_message(message.chat.id, "Ошибка соединения, попробуй позже.")
+
+        @self.bot.message_handler(commands=['search'])
+        def handle_search(message):
+            self.bot.send_message(
+                message.chat.id,
+                "⚙️ Команда /search пока в разработке!",
+                parse_mode='Markdown'
+            )
+
+        @self.bot.message_handler(commands=['menu'])
+        def handle_menu(message):
+            self.bot.send_message(
+                message.chat.id,
+                "⚙️ Команда /menu пока в разработке!",
+                parse_mode='Markdown'
+            )
+
+        @self.bot.callback_query_handler(func=lambda call: True)
+        def handle_callback(call):
+            if call.data == "search":
+                self.bot.answer_callback_query(call.id, "Поиск соперника...")
+                self.bot.send_message(
+                    call.message.chat.id,
+                    "⚙️ Поиск пока в разработке!",
+                    parse_mode='Markdown'
+                )
+            elif call.data == "menu":
+                self.bot.answer_callback_query(call.id, "Меню...")
+                self.bot.send_message(
+                    call.message.chat.id,
+                    "⚙️ Меню пока в разработке!",
+                    parse_mode='Markdown'
+                )
+
+    def run(self):
+        logger.info("Star Wars Bot запущен!")
+        self.bot.infinity_polling()
+
+
+if __name__ == "__main__":
+    TOKEN = os.environ.get('TOKEN')
     
-    welcome_message = (
-        f"*🔥 Йоу, {user_name}!*\n\n"
-        f"⚡ Вижу ты тут впервые. Что ж, это - игровой бот в телеграм для дуэлей между игроками, "
-        f"прямо здесь, в чате, оформленный в стиле Звездных Войн! Крутяк, да? В любом случае, давай уже начнем!\n\n"
-        f"_✨ А если интересно, вот другие наши проекты:_\n"
-        f" - [ЧИБИКИ | Собирай коллекционных ребяток по вселенной далекой-далекой](https://t.me/chibeki_bot)\n"
-        f" - [Проекты | Наш тгк с новостями о ботах](https://t.me/tz_projects)\n\n"
-        f"_Напиши /search чтобы найти соперника и /menu чтобы вызвать меню_"
-    )
+    if not TOKEN:
+        logger.error("TOKEN environment variable is not set")
+        raise ValueError("TOKEN environment variable is required")
     
-    await update.message.reply_text(
-        welcome_message,
-        parse_mode='Markdown',
-        disable_web_page_preview=True
-    )
-
-async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("⚙️ Команда /search пока в разработке!")
-
-async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("⚙️ Команда /menu пока в разработке!")
-
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await send_welcome(update, context)
-
-application.add_handler(CommandHandler("start", start_command))
-application.add_handler(CommandHandler("search", search_command))
-application.add_handler(CommandHandler("menu", menu_command))
-
-@app.post('/webhook')
-async def webhook():
-    json_data = await request.get_json()
-    update = Update.de_json(json_data, application.bot)
-    await application.process_update(update)
-    return 'ok'
-
-@app.get('/')
-def index():
-    return 'Бот работает! Отправьте /start в Telegram боту.'
-
-async def setup_webhook():
-    if WEBHOOK_URL:
-        await application.bot.set_webhook(
-            url=f"{WEBHOOK_URL}/webhook",
-            drop_pending_updates=True
-        )
-        logger.info(f"Webhook установлен: {WEBHOOK_URL}/webhook")
-
-def main() -> None:
-    import asyncio
-    
-    asyncio.run(setup_webhook())
-    app.run(host='0.0.0.0', port=PORT, debug=False)
-
-if __name__ == '__main__':
-    main()
+    bot = StarWarsBot(TOKEN)
+    bot.run()
