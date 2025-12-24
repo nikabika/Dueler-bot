@@ -1,26 +1,29 @@
+import os
 import logging
-from typing import Final
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from flask import Flask, request
 
-# Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Токен бота (замени на свой)
-TOKEN: Final = "8357197397:AAEiXz5uYjlnzIP6a1e79bLVh6mWrpecszI"
+TOKEN = os.environ.get("TOKEN")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+PORT = int(os.environ.get("PORT", 8080))
 
-# Функция приветствия для новых пользователей
+if not TOKEN:
+    logger.error("TOKEN environment variable is not set")
+    raise ValueError("TOKEN environment variable is required")
+
+app = Flask(__name__)
+application = Application.builder().token(TOKEN).build()
+
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Отправляет приветственное сообщение при старте бота."""
-    
-    # Получаем имя пользователя
     user_name = update.effective_user.first_name
     
-    # Формируем приветственное сообщение с разметкой
     welcome_message = (
         f"*🔥 Йоу, {user_name}!*\n\n"
         f"⚡ Вижу ты тут впервые. Что ж, это - игровой бот в телеграм для дуэлей между игроками, "
@@ -31,14 +34,12 @@ async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         f"_Напиши /search чтобы найти соперника и /menu чтобы вызвать меню_"
     )
     
-    # Отправляем сообщение с разметкой Markdown
     await update.message.reply_text(
         welcome_message,
         parse_mode='Markdown',
         disable_web_page_preview=True
     )
 
-# Заглушки для других команд (пока не реализованы)
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("⚙️ Команда /search пока в разработке!")
 
@@ -46,22 +47,36 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text("⚙️ Команда /menu пока в разработке!")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /start"""
     await send_welcome(update, context)
 
+application.add_handler(CommandHandler("start", start_command))
+application.add_handler(CommandHandler("search", search_command))
+application.add_handler(CommandHandler("menu", menu_command))
+
+@app.post('/webhook')
+async def webhook():
+    json_data = await request.get_json()
+    update = Update.de_json(json_data, application.bot)
+    await application.process_update(update)
+    return 'ok'
+
+@app.get('/')
+def index():
+    return 'Бот работает! Отправьте /start в Telegram боту.'
+
+async def setup_webhook():
+    if WEBHOOK_URL:
+        await application.bot.set_webhook(
+            url=f"{WEBHOOK_URL}/webhook",
+            drop_pending_updates=True
+        )
+        logger.info(f"Webhook установлен: {WEBHOOK_URL}/webhook")
+
 def main() -> None:
-    """Запуск бота."""
-    # Создаем приложение
-    application = Application.builder().token(TOKEN).build()
-
-    # Регистрируем обработчики команд
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("search", search_command))
-    application.add_handler(CommandHandler("menu", menu_command))
-
-    # Запускаем бота
-    logger.info("Бот запущен...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    import asyncio
+    
+    asyncio.run(setup_webhook())
+    app.run(host='0.0.0.0', port=PORT, debug=False)
 
 if __name__ == '__main__':
     main()
