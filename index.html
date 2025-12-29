@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игровое поле</title>
+    <link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap&subset=cyrillic" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Play', sans-serif;
+            background-color: #0a192f;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0));
+            z-index: 0;
+        }
+        
+        /* Шапка - общий контейнер */
+        .header-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        /* Металлические прямоугольники */
+        .header-box {
+            height: 60px;
+            width: 180px;
+            background: linear-gradient(145deg, #525252, #2c2c2c);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        .left-box {
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+            margin-left: 0;
+        }
+        
+        .right-box {
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+            margin-right: 0;
+        }
+        
+        /* Квадратик с картинкой - БЕЗ ФОНА */
+        .avatar-square {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            overflow: hidden;
+            border-radius: 12px;
+            /* Убраны все фоновые градиенты и тени */
+        }
+        
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+        
+        /* Текст без тени */
+        .box-text {
+            font-weight: 600;
+            font-size: 15px;
+            color: white;
+            display: flex;
+            align-items: center;
+        }
+        
+        .heart {
+            color: #ff6b8b;
+            margin: 0 2px;
+        }
+        
+        .brackets {
+            margin-left: 5px;
+            font-size: 13px;
+        }
+        
+        /* Центральный блок с таймером */
+        .center-timer {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: auto;
+        }
+        
+        .match-text {
+            font-size: 30px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        
+        .divider-line {
+            width: 100%;
+            height: 1.5px;
+            background-color: rgba(255, 255, 255, 0.7);
+            margin: 0 auto 5px auto;
+            border-radius: 1px;
+        }
+        
+        .timer-text {
+            font-size: 18px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+        
+        /* Игровое поле 5x5 */
+        .game-field {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 10px;
+            width: 450px;
+            height: 450px;
+            z-index: 50;
+        }
+        
+        /* Клетки поля с анимацией градиентных полосок */
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            
+            /* Немного срезанные углы */
+            clip-path: polygon(
+                5px 0, calc(100% - 5px) 0, 100% 5px,
+                100% calc(100% - 5px), calc(100% - 5px) 100%,
+                5px 100%, 0 calc(100% - 5px), 0 5px
+            );
+            
+            /* Анимированный градиент голограммы */
+            background: linear-gradient(
+                90deg,
+                rgba(80, 150, 220, 0.35) 0%,
+                rgba(100, 170, 240, 0.45) 20%,
+                rgba(80, 150, 220, 0.35) 40%,
+                rgba(100, 170, 240, 0.45) 60%,
+                rgba(80, 150, 220, 0.35) 80%,
+                rgba(100, 170, 240, 0.45) 100%
+            );
+            background-size: 200% 100%;
+            animation: hologram-shift 8s ease-in-out infinite;
+            
+            /* Контур с белым акцентом в верхнем левом и нижнем правом углу */
+            border: 2px solid transparent;
+            position: relative;
+        }
+        
+        /* Анимация перелива градиентных полосок */
+        @keyframes hologram-shift {
+            0% {
+                background-position: 0% 0%;
+            }
+            50% {
+                background-position: 100% 0%;
+            }
+            100% {
+                background-position: 0% 0%;
+            }
+        }
+        
+        /* Градиентный контур с белыми акцентами */
+        .cell::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            
+            /* Немного срезанные углы для контура */
+            clip-path: polygon(
+                5px 0, calc(100% - 5px) 0, 100% 5px,
+                100% calc(100% - 5px), calc(100% - 5px) 100%,
+                5px 100%, 0 calc(100% - 5px), 0 5px
+            );
+            
+            padding: 2px;
+            background: linear-gradient(
+                135deg,
+                rgba(255, 255, 255, 0.9) 0%, /* Белый в верхнем левом */
+                rgba(140, 200, 255, 0.7) 25%,
+                rgba(140, 200, 255, 0.7) 75%,
+                rgba(255, 255, 255, 0.9) 100% /* Белый в нижнем правом */
+            );
+            -webkit-mask: 
+                linear-gradient(#fff 0 0) content-box, 
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            z-index: -1;
+        }
+        
+        /* Знак вопроса */
+        .cell-question {
+            font-family: 'Play', sans-serif;
+            font-weight: 700;
+            color: rgba(140, 200, 255, 0.9);
+            font-size: 34px;
+        }
+        
+        /* Крупные картинки пиратов */
+        .pirate-image {
+            position: fixed;
+            z-index: 60; /* Поверх всего */
+            object-fit: cover;
+        }
+        
+        .pirate1 {
+            left: 0;
+            bottom: 0;
+            width: 350px;
+            height: 350px;
+        }
+        
+        .pirate2 {
+            right: 0;
+            bottom: 0;
+            width: 350px;
+            height: 350px;
+            transform: scaleX(-1); /* Отзеркаливание */
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 1024px) {
+            .pirate1, .pirate2 {
+                width: 280px;
+                height: 280px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-box {
+                width: 150px;
+                height: 55px;
+            }
+            
+            .avatar-square {
+                width: 32px;
+                height: 32px;
+                margin-right: 10px;
+            }
+            
+            .box-text {
+                font-size: 13px;
+            }
+            
+            .match-text {
+                font-size: 26px;
+            }
+            
+            .timer-text {
+                font-size: 16px;
+            }
+            
+            .game-field {
+                width: 380px;
+                height: 380px;
+                gap: 8px;
+            }
+            
+            .cell {
+                font-size: 28px;
+                clip-path: polygon(
+                    4px 0, calc(100% - 4px) 0, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) 100%,
+                    4px 100%, 0 calc(100% - 4px), 0 4px
+                );
+            }
+            
+            .cell::before {
+                clip-path: polygon(
+                    4px 0, calc(100% - 4px) 0, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) 100%,
+                    4px 100%, 0 calc(100% - 4px), 0 4px
+                );
+            }
+            
+            .cell-question {
+                font-size: 30px;
+            }
+            
+            .pirate1, .pirate2 {
+                width: 220px;
+                height: 220px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header-box {
+                width: 130px;
+                height: 50px;
+                padding: 0 10px;
+            }
+            
+            .avatar-square {
+                width: 28px;
+                height: 28px;
+                margin-right: 8px;
+            }
+            
+            .box-text {
+                font-size: 12px;
+            }
+            
+            .match-text {
+                font-size: 22px;
+            }
+            
+            .timer-text {
+                font-size: 14px;
+            }
+            
+            .game-field {
+                width: 320px;
+                height: 320px;
+                gap: 6px;
+            }
+            
+            .cell {
+                font-size: 24px;
+                clip-path: polygon(
+                    3px 0, calc(100% - 3px) 0, 100% 3px,
+                    100% calc(100% - 3px), calc(100% - 3px) 100%,
+                    3px 100%, 0 calc(100% - 3px), 0 3px
+                );
+            }
+            
+            .cell::before {
+                clip-path: polygon(
+                    3px 0, calc(100% - 3px) 0, 100% 3px,
+                    100% calc(100% - 3px), calc(100% - 3px) 100%,
+                    3px 100%, 0 calc(100% - 3px), 0 3px
+                );
+            }
+            
+            .cell-question {
+                font-size: 26px;
+            }
+            
+            .pirate1, .pirate2 {
+                width: 180px;
+                height: 180px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Контейнер для всей шапки -->
+    <div class="header-container">
+        <!-- Левый прямоугольник -->
+        <div class="header-box left-box">
+            <div class="avatar-square">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=User1" alt="User" class="avatar-img">
+            </div>
+            <div class="box-text">
+                User<span class="brackets">(<span class="heart">❤️</span>8)</span>
+            </div>
+        </div>
+        
+        <!-- Центральный таймер -->
+        <div class="center-timer">
+            <div class="match-text">МАТЧ</div>
+            <div class="divider-line"></div>
+            <div class="timer-text" id="timer">05:00</div>
+        </div>
+        
+        <!-- Правый прямоугольник -->
+        <div class="header-box right-box">
+            <div class="avatar-square">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=User2" alt="User" class="avatar-img">
+            </div>
+            <div class="box-text">
+                User<span class="brackets">(<span class="heart">❤️</span>8)</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Игровое поле 5x5 -->
+    <div class="game-field" id="gameField">
+        <!-- Клетки будут созданы через JavaScript -->
+    </div>
+    
+    <!-- Крупные картинки пиратов -->
+    <!-- Замените src на путь к вашим файлам из папки Characters -->
+    <img src="Characters/Pirate.png" alt="Pirate1" class="pirate-image pirate1">
+    <img src="Characters/Pirate.png" alt="Pirate2" class="pirate-image pirate2">
+
+    <script>
+        // Таймер обратного отсчета
+        let timeRemaining = 300;
+        const timerElement = document.getElementById('timer');
+        
+        function updateTimer() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            
+            const formattedMinutes = minutes.toString().padStart(2, '0');
+            const formattedSeconds = seconds.toString().padStart(2, '0');
+            
+            timerElement.textContent = `${formattedMinutes}:${formattedSeconds}`;
+            timeRemaining--;
+            
+            if (timeRemaining < 0) {
+                timeRemaining = 300;
+            }
+        }
+        
+        setInterval(updateTimer, 1000);
+        updateTimer();
+        
+        // Создание игрового поля 5x5 с вопросительными знаками
+        const gameField = document.getElementById('gameField');
+        const totalCells = 25;
+        
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            
+            const questionSpan = document.createElement('span');
+            questionSpan.className = 'cell-question';
+            questionSpan.textContent = '?';
+            
+            cell.appendChild(questionSpan);
+            gameField.appendChild(cell);
+        }
+        
+        // Интерактивность для прямоугольников
+        document.addEventListener('DOMContentLoaded', function() {
+            const boxes = document.querySelectorAll('.header-box');
+            
+            boxes.forEach(box => {
+                box.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(2px)';
+                    this.style.transition = 'transform 0.3s ease';
+                });
+                
+                box.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+            
+            // Загрузка изображений пиратов с обработкой ошибок
+            const pirateImages = document.querySelectorAll('.pirate-image');
+            pirateImages.forEach(img => {
+                img.onerror = function() {
+                    // Если изображение не загрузилось, используем fallback
+                    this.src = 'https://api.dicebear.com/7.x/adventurer/svg?seed=Pirate&size=400&backgroundColor=0a192f';
+                    console.log('Используется fallback изображение для пирата');
+                };
+            });
+        });
+    </script>
+</body>
+</html>
