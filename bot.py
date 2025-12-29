@@ -9,34 +9,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class BlueSkyBot:
+class StarWarsBot:
     def __init__(self, token):
         self.bot = telebot.TeleBot(token)
         self.setup_handlers()
         
-    def get_or_create_user(self, telegram_id, first_name=None, username=None):
-        return {
-            "telegram_id": str(telegram_id),
-            "first_name": first_name or "путешественник",
-            "username": username,
-        }, True
-
     def setup_handlers(self):
         @self.bot.message_handler(commands=['start'])
         def handle_start(message):
             try:
-                user, is_new = self.get_or_create_user(
-                    message.from_user.id,
-                    message.from_user.first_name,
-                    message.from_user.username
-                )
+                name = message.from_user.first_name or "путешественник"
                 
-                name = user['first_name']
-                
-                welcome_text = f"""*❄️ Йоу, {name}!*
-⚡ Вижу ты тут впервые. Что ж, это - игровой бот в телеграм для кристальных дуэлей между игроками, прямо здесь, в чате, оформленный в стиле Во Все Тяжкие! Чистая химия, да? В любом случае, давай уже начнем! 
+                welcome_text = f"""*🔥 Йоу, {name}!*
+⚡ Вижу ты тут впервые. Что ж, это - игровой бот в телеграм для дуэлей между игроками, прямо здесь, в чате, оформленный в стиле Звездных Войн! Крутяк, да? В любом случае, давай уже начнем! 
 
-_✨ А если интересно, вот другие наши проекты:_
+_✨ А  если интересно, вот другие наши проекты:_
  - [ЧИБИКИ | Собирай коллекционных ребяток по вселенной далекой-далекой](https://t.me/chibeki_bot)
  - [Проекты | Наш тгк с новостями о ботах](https://t.me/tz_projects)
 
@@ -44,7 +31,7 @@ _Напиши /search чтобы найти соперника и /menu чтоб
                 
                 markup = types.InlineKeyboardMarkup(row_width=2)
                 btn_search = types.InlineKeyboardButton("🔍 Поиск", callback_data="search")
-                btn_menu = types.InlineKeyboardButton("❄️ Меню", callback_data="menu")
+                btn_menu = types.InlineKeyboardButton("📋 Меню", callback_data="menu")
                 markup.add(btn_search, btn_menu)
                 
                 self.bot.send_message(
@@ -58,22 +45,6 @@ _Напиши /search чтобы найти соперника и /menu чтоб
             except Exception as e:
                 logger.error(f"Ошибка в start: {e}")
                 self.bot.send_message(message.chat.id, "Ошибка соединения, попробуй позже.")
-
-        @self.bot.message_handler(commands=['search'])
-        def handle_search(message):
-            self.bot.send_message(
-                message.chat.id,
-                "⚙️ Команда /search пока в разработке!",
-                parse_mode='Markdown'
-            )
-
-        @self.bot.message_handler(commands=['menu'])
-        def handle_menu(message):
-            self.bot.send_message(
-                message.chat.id,
-                "⚙️ Команда /menu пока в разработке!",
-                parse_mode='Markdown'
-            )
 
         @self.bot.callback_query_handler(func=lambda call: True)
         def handle_callback(call):
@@ -93,7 +64,7 @@ _Напиши /search чтобы найти соперника и /menu чтоб
                 )
 
     def run(self):
-        logger.info("Blue Sky Bot запущен!")
+        logger.info("Star Wars Bot запущен!")
         self.bot.infinity_polling()
 
 
@@ -104,5 +75,5 @@ if __name__ == "__main__":
         logger.error("TOKEN environment variable is not set")
         raise ValueError("TOKEN environment variable is required")
     
-    bot = BlueSkyBot(TOKEN)
+    bot = StarWarsBot(TOKEN)
     bot.run()
